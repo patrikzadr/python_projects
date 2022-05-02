@@ -1,0 +1,119 @@
+import unittest
+from trading_exchange import *
+
+
+def check_transaction(transaction: Transaction, buyer_id: str, seller_id: str,
+                      amount: int, price: int) -> None:
+    assert transaction.buyer_id == buyer_id
+    assert transaction.seller_id == seller_id
+    assert transaction.amount == amount
+    assert transaction.price == price
+
+
+class OrderInstructionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.duckburg_se: StockExchange = {}
+        add_new_stock(self.duckburg_se, 'SVBSH')
+        self.db = self.duckburg_se['SVBSH']
+
+    def tearDown(self) -> None:
+        del self.duckburg_se
+
+    # @unittest.skip
+    def test_place_buy_order(self):
+        place_buy_order(self.duckburg_se, 'SVBSH', 'Kaja', 10, 70)
+        self.assertEqual(self.duckburg_se['SVBSH'].buyers, [Order('Kaja', 10, 70)])
+        # dve rovnake ceny
+        place_buy_order(self.duckburg_se, 'SVBSH', 'Kaja', 5, 80)
+        place_buy_order(self.duckburg_se, 'SVBSH', 'Kaja', 6, 80)
+        self.assertEqual(self.duckburg_se['SVBSH'].buyers, [
+            Order('Kaja', 10, 70),
+            Order('Kaja', 6, 80),
+            Order('Kaja', 5, 80)
+        ])
+
+        place_buy_order(self.duckburg_se, 'SVBSH', 'Pato', 5, 60)
+        self.assertEqual(self.duckburg_se['SVBSH'].buyers, [
+            Order('Pato', 5, 60),
+            Order('Kaja', 10, 70),
+            Order('Kaja', 6, 80),
+            Order('Kaja', 5, 80)
+        ])
+
+        place_buy_order(self.duckburg_se, 'SVBSH', 'Kristina', 7, 60)
+        self.assertListEqual(self.duckburg_se['SVBSH'].buyers, [
+            Order('Kristina', 7, 60),
+            Order('Pato', 5, 60),
+            Order('Kaja', 10, 70),
+            Order('Kaja', 6, 80),
+            Order('Kaja', 5, 80)
+        ])
+
+        place_buy_order(self.duckburg_se, 'SVBSH', 'Tamara', 10, 60)
+        self.assertEqual(self.duckburg_se['SVBSH'].buyers, [
+            Order('Tamara', 10, 60),
+            Order('Kristina', 7, 60),
+            Order('Pato', 5, 60),
+            Order('Kaja', 10, 70),
+            Order('Kaja', 6, 80),
+            Order('Kaja', 5, 80)
+        ])
+
+    # @unittest.skip
+    def test_place_sell_order(self):
+        self.tearDown()
+        self.setUp()
+
+        place_sell_order(self.duckburg_se, 'SVBSH', 'Viera', 20, 10)
+        self.assertEqual(self.duckburg_se['SVBSH'].sellers, [
+            Order('Viera', 20, 10)
+        ])
+
+        place_sell_order(self.duckburg_se, 'SVBSH', 'Mama', 30, 10)
+        self.assertEqual(self.duckburg_se['SVBSH'].sellers, [
+            Order('Mama', 30, 10),
+            Order('Viera', 20, 10)
+        ])
+
+        place_sell_order(self.duckburg_se, 'SVBSH', 'Tato', 40, 10)
+        self.assertEqual(self.duckburg_se['SVBSH'].sellers, [
+            Order('Tato', 40, 10),
+            Order('Mama', 30, 10),
+            Order('Viera', 20, 10)
+        ])
+
+        place_sell_order(self.duckburg_se, 'SVBSH', 'Tato', 4, 20)
+        self.assertEqual(self.duckburg_se['SVBSH'].sellers, [
+            Order('Tato', 4, 20),
+            Order('Tato', 40, 10),
+            Order('Mama', 30, 10),
+            Order('Viera', 20, 10)
+        ])
+
+        place_sell_order(self.duckburg_se, 'SVBSH', 'Instruktor', 4, 15)
+        self.assertEqual(self.duckburg_se['SVBSH'].sellers, [
+            Order('Tato', 4, 20),
+            Order('Instruktor', 4, 15),
+            Order('Tato', 40, 10),
+            Order('Mama', 30, 10),
+            Order('Viera', 20, 10)
+        ])
+
+    def test_mix(self):
+        place_sell_order(self.duckburg_se, 'SVBSH', 'Viera', 1, 10)
+        place_buy_order(self.duckburg_se, 'SVBSH', 'Lubo', 2, 15)
+
+        self.assertEqual(self.db.sellers, [])
+        self.assertEqual(self.db.sellers, [])
+        self.assertEqual(self.db.buyers, [Order('Lubo', 1, 15)])
+        check_transaction(self.db.history[0], 'Lubo', 'Viera', 1, 10)
+
+        place_sell_order(self.duckburg_se, 'SVBSH', 'Mama', 4, 9)
+
+        check_transaction(self.db.history[1], 'Lubo', 'Mama', 1, 9)
+        self.assertEqual(self.db.buyers, [])
+        self.assertEqual(self.db.sellers, [Order('Mama', 3, 9)])
+
+
+if __name__ == '__main__':
+    unittest.main()
